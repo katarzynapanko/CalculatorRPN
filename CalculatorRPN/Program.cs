@@ -1,8 +1,12 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using System.Collections;
+
 Console.WriteLine("Hello, World!");
 Console.WriteLine("Enter your function to calculate");
-var symbols = GetFunction(); 
+var symbols = GetFunction();
+var stack = new Stack<string>();
+var operatorsStack = new Stack<string>();
 var operators = new Dictionary<string, int>()
 {
     { "+", 0 },
@@ -10,8 +14,10 @@ var operators = new Dictionary<string, int>()
     { "*", 1 },
     { "/", 1 }
 };
-CheckSymbols(symbols, operators);
-var equation = TransformToRPN(symbols, operators);
+string[] brackets = { "(", ")" };
+CheckSymbols(symbols, operators, brackets);
+var equation = TransformToRPN(symbols, brackets, operators, stack, operatorsStack);
+Console.WriteLine(string.Join(" ", equation));
 Console.WriteLine(ComputeResult(equation));
 
 static string[] GetFunction()
@@ -19,34 +25,48 @@ static string[] GetFunction()
     var function = Console.ReadLine();
     while (function is null)
     {
-        Console.WriteLine("rong input gupolu");
+        Console.WriteLine("Wrong input");
         function = Console.ReadLine();
     }
     return function.Split(" ");
 }
- static void CheckSymbols(string[] symbols, Dictionary<string, int> operators)
+ static void CheckSymbols(string[] symbols, Dictionary<string, int> operators, string[] brackets)
 {
-    if (!symbols.All(x => int.TryParse(x, out _) || operators.ContainsKey(x)))
+    if (!symbols.All(x => int.TryParse(x, out _) || operators.ContainsKey(x) || brackets.Any()))
     {
         Console.WriteLine("Incorrect elements found in equation.");
         return;
     }
 }
 
-static List<string> TransformToRPN(string[] symbols, Dictionary<string, int> operators)
+static List<string> TransformToRPN(string[] symbols, string[] brackets, Dictionary<string, int> operators, Stack<string> stack, Stack<string> operatorsStack)
 {
-    var stack = new Stack<string>();
-    var operatorsStack = new Stack<string>();
     foreach (var symbol in symbols)
     {
-        if (!operators.ContainsKey(symbol))
+        if (!operators.ContainsKey(symbol) && !brackets.Contains(symbol))
         {
             stack.Push(symbol);
             continue;
         }
+        else if (symbol == "(")
+        {
+            operatorsStack.Push(symbol);
+            continue;
+        }
+        else if (symbol == ")")
+        {
+            while (operatorsStack.Any() && !operatorsStack.Peek().Equals("("))
+            {
+                stack.Push(operatorsStack.Pop());
+            }
+            _ = operatorsStack.Pop();
+            continue;
+        }
         while (operatorsStack.TryPeek(out var lastOperator))
         {
-            if (operators[lastOperator] >= operators[symbol])
+            if (operators.ContainsKey(lastOperator) && 
+                operators.ContainsKey(symbol) &&
+                operators[lastOperator] >= operators[symbol])
             {
                 stack.Push(operatorsStack.Pop());
                 continue;
@@ -60,8 +80,9 @@ static List<string> TransformToRPN(string[] symbols, Dictionary<string, int> ope
         stack.Push(operatorsStack.Pop());
     }
     var rpnEquation = stack.ToList();
-    rpnEquation.Reverse();
+    rpnEquation.Reverse();;
     return rpnEquation;
+    
 }
 static string ComputeResult(List<string> rpnEquation)
 
